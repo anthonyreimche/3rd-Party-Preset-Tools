@@ -1,4 +1,4 @@
-# Lightroom Preset Importer for SafeLight
+# 3rd-Party Preset Importer for SafeLight
 
 This extension teaches SafeLight's Presets panel to import Adobe Lightroom presets in `.xmp` and `.lrtemplate` formats. It automatically maps Lightroom's editing parameters to SafeLight's DevelopParams structure, making it easy for Lightroom users to bring their preset libraries into SafeLight.
 
