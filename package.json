@@ -6,8 +6,8 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "rolldown",
-    "dev": "rolldown --watch",
+    "build": "rolldown -c rolldown.config.js",
+    "dev": "rolldown -c rolldown.config.js --watch",
     "test": "vitest"
   },
   "devDependencies": {

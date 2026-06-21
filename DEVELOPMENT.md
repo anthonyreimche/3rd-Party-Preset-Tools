@@ -308,9 +308,22 @@ npm run build
 
 Creates `dist/index.js` — a single ESM file ready for SafeLight.
 
-### For SafeLight Installation
+> **Important:** `dist/index.js` must be **committed** to the repo. SafeLight's
+> "Install from GitHub" flow downloads the repo source tarball and looks for the
+> entry bundle named in `safelight.json` (`main: "dist/index.js"`). If `dist/` is
+> git-ignored, installs fail with `Entry bundle "dist/index.js" not found in repo`.
+> Always run `npm run build` and commit the result before pushing a release.
 
-Copy the entire extension folder to SafeLight's plugins directory:
+### Install from GitHub (Extensions store)
+
+In SafeLight, install by `owner/repo` (optionally `owner/repo#branch`). SafeLight
+fetches the tarball for that ref and copies the committed files — including
+`dist/index.js` — into the plugins directory. No build runs on install, so the
+bundle has to already be in the repo.
+
+### For manual / local installation
+
+Copy the entire extension folder (with a built `dist/`) to SafeLight's plugins directory:
 
 **macOS**: `~/Library/Application Support/SafeLight/plugins/`  
 **Windows**: `C:\Users\<user>\AppData\Roaming\SafeLight\plugins\`  
@@ -323,8 +336,8 @@ Then restart SafeLight or reload extensions.
 1. Update `safelight.json`: `version` field
 2. Update `package.json`: `version` field
 3. Update `README.md`: **Version** footer
-4. Commit & tag: `git tag v1.0.1`
-5. Create release in GitHub
+4. `npm run build` and commit `dist/index.js`
+5. Commit & tag: `git tag v1.0.1`, then push (`git push && git push --tags`)
 
 ## Extending the Importer
 
