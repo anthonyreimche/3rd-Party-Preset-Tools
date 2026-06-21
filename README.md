@@ -222,5 +222,5 @@ Contributions welcome. If you encounter a Lightroom preset that doesn't import c
 ---
 
 **Version**: 1.0.0  
-**SafeLight Minimum Version**: 1.0.0  
+**SafeLight Minimum Version**: 2.1.0  
 **Author**: Anthony
