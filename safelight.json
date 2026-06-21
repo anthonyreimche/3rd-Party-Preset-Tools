@@ -1,0 +1,11 @@
+{
+  "id": "lightroom-preset-importer",
+  "name": "Lightroom Preset Importer",
+  "version": "1.0.0",
+  "description": "Import Lightroom presets (.xmp, .lrtemplate) into SafeLight",
+  "author": "Anthony",
+  "main": "dist/index.js",
+  "categories": ["Presets"],
+  "keywords": ["lightroom", "import", "preset", "xmp", "lrtemplate"],
+  "license": "MIT"
+}
