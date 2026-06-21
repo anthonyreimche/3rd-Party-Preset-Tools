@@ -107,8 +107,8 @@ describe("Parameter Mapper", () => {
     const result = await mapLightroomToDevelopParams(preset);
 
     expect(result?.params.exposure).toBe(50);
-    expect("cameraProfile" in result?.params || true).toBe(true);
-    expect("lensProfileName" in result?.params || true).toBe(true);
+    expect(result?.params).not.toHaveProperty("cameraProfile");
+    expect(result?.params).not.toHaveProperty("lensProfileName");
   });
 
   it("handles missing transformation gracefully", async () => {
