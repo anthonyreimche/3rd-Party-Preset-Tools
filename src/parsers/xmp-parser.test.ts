@@ -1,5 +1,46 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import { parseXmpPreset } from "./xmp-parser";
+
+const fixture = (name: string): File =>
+  new File([readFileSync(resolve(__dirname, "../__fixtures__", name))], name);
+
+describe("XMP Parser: Lightroom Classic preset", () => {
+  it("reads the preset's name from crs:Name", async () => {
+    const result = await parseXmpPreset(fixture("warm-matte.xmp"));
+    expect(result?.name).toBe("Warm Matte");
+  });
+
+  it("reads tone curves from their rdf:Seq point lists", async () => {
+    const result = await parseXmpPreset(fixture("warm-matte.xmp"));
+    expect(result?.settings.ToneCurvePV2012).toEqual([
+      [0, 24],
+      [64, 60],
+      [192, 200],
+      [255, 245],
+    ]);
+    expect(result?.settings.ToneCurvePV2012Red).toEqual([
+      [0, 0],
+      [255, 255],
+    ]);
+  });
+
+  // A preset embeds its profile (crs:Look), whose own parameters describe the
+  // profile's rendering rather than the preset's adjustments.
+  it("ignores settings nested inside the embedded profile", async () => {
+    const result = await parseXmpPreset(fixture("warm-matte.xmp"));
+    expect(result?.settings.ProcessVersion).toBe(15.4);
+    expect(result?.settings).not.toHaveProperty("LookTable");
+    expect(result?.settings).not.toHaveProperty("Amount");
+  });
+
+  it("reads Lightroom's capitalised booleans", async () => {
+    const result = await parseXmpPreset(fixture("warm-matte.xmp"));
+    expect(result?.settings.ConvertToGrayscale).toBe(false);
+    expect(result?.settings.HasSettings).toBe(true);
+  });
+});
 
 describe("XMP Parser", () => {
   it("parses valid XMP with camera raw settings", async () => {

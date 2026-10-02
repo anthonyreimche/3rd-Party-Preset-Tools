@@ -38,36 +38,33 @@ This extension is part of the "3rd-Party Preset Tools for SafeLight" extension b
 
 The following Lightroom adjustments map to SafeLight parameters:
 
-| Lightroom Parameter | SafeLight Field | Status |
+| Lightroom Parameter | Lightroom key(s) | SafeLight Field |
 |---|---|---|
-| Exposure | exposure | ✅ |
-| Contrast | contrast | ✅ |
-| Highlights | highlights | ✅ |
-| Shadows | shadows | ✅ |
-| Whites | whites | ✅ |
-| Blacks | blacks | ✅ |
-| Texture | texture | ✅ |
-| Clarity | clarity | ✅ |
-| Dehaze | dehaze | ✅ |
-| Vibrance | vibrance | ✅ |
-| Saturation | saturation | ✅ |
-| Temperature | temperature | ✅ |
-| Tint | tint | ✅ |
-| Sharpening | sharpening | ✅ |
-| Luminance NR | luminanceNR | ✅ |
-| Color NR | colorNR | ✅ |
-| HSL Mixer (8 channels) | hsl | ✅ |
-| Vignette | vignette | ✅ |
-| Grain | grain | ✅ |
+| Exposure | `Exposure2012` | exposure |
+| Contrast, Highlights, Shadows, Whites, Blacks | `Contrast2012` … `Blacks2012` | contrast … blacks |
+| Texture, Clarity, Dehaze | `Texture`, `Clarity2012`, `Dehaze` | texture, clarity, dehaze |
+| Vibrance, Saturation | `Vibrance`, `Saturation` | vibrance, saturation |
+| Temperature, Tint | `Temperature`, `Tint` | temperature, tint |
+| Sharpening (amount, radius, detail, masking) | `Sharpness`, `SharpenRadius`, `SharpenDetail`, `SharpenEdgeMasking` | sharpening … sharpenMasking |
+| Noise Reduction (luminance, detail, contrast; color, detail, smoothness) | `LuminanceSmoothing`, `LuminanceNoiseReduction*`, `ColorNoiseReduction*` | luminanceNR …, colorNR … |
+| HSL / Color mixer (8 channels) | `HueAdjustment*`, `SaturationAdjustment*`, `LuminanceAdjustment*` | hsl |
+| Tone curve (point curve, R, G, B) | `ToneCurvePV2012`, `ToneCurvePV2012Red/Green/Blue` | toneCurve |
+| Color grading (shadows, midtones, highlights, global) | `ColorGrade*`, `SplitToning*` | colorGrading |
+| Post-crop vignette | `PostCropVignette*` | vignette |
+| Grain | `GrainAmount`, `GrainSize`, `GrainFrequency` | grain |
+| Black & White | `ConvertToGrayscale` | saturation −100 |
 
 ## Unsupported Lightroom Parameters
 
 The following Lightroom features have no SafeLight equivalent and are **silently skipped**:
 
-- **Camera Profiles** — SafeLight doesn't yet have a camera profile system (see [issue #21](https://github.com/anthonyreimche/safelight/issues/21))
-- **Lens Profiles** — Lens correction profiles are planned but not yet implemented
+- **Camera Profiles** — including the profile embedded in a preset (`crs:Look`)
+- **Lens Profiles** and **lens vignetting correction** (`VignetteAmount`)
 - **Automatic Lateral CA** — Automatic chromatic aberration correction
-- **Color Grade (split toning)** — Lightroom's split-toning UI doesn't map cleanly to SafeLight's color grading wheels
+- **B&W mix** (`GrayMixer*`) — a black-and-white preset imports fully desaturated
+- **Color grading Blending and Balance** — SafeLight's shadow/highlight ranges keep their defaults
+- **Relative white balance for JPEGs** (`IncrementalTemperature`, `IncrementalTint`)
+- **Masks, crop, and transform**
 - **Process Version** — Lightroom-internal; ignored
 - **Custom Camera Models** — Lightroom-internal; ignored
 
@@ -75,30 +72,16 @@ These presets will still import successfully — they'll just be missing those a
 
 ## Parameter Mapping Details
 
-### Temperature
+Lightroom writes each slider as it reads in its own UI, and SafeLight's sliders use the same scales, so values transfer unchanged and are only clamped to SafeLight's ranges:
 
-Lightroom stores absolute temperature in Kelvin (2000–50000; 6500 = daylight neutral).
-SafeLight uses a relative adjustment (-100 to +100). The importer converts:
+- **Exposure** — EV, −5 to +5.
+- **Temperature** — Kelvin, 2000 to 50000; **Tint** −150 to +150.
+- **Tone, presence, HSL** — −100 to +100.
+- **Sharpening amount** — Lightroom goes to 150, SafeLight to 100; radius is clamped to SafeLight's 1–3.
+- **Grain size** — SafeLight's smallest grain is 25 (Lightroom's default).
+- **Tone curves** — Lightroom's 0–255 points become SafeLight's 0–1 points.
 
-- Lightroom 6500 K → SafeLight 0 (neutral)
-- Lightroom 7000 K → SafeLight +7.7 (warmer)
-- Lightroom 5000 K → SafeLight -23 (cooler)
-
-### Exposure
-
-Lightroom: -5 to +5 EV  
-SafeLight: -200 to +200  
-Conversion: Lightroom × 100
-
-### HSL Mixer
-
-Lightroom encodes 8 color bands (Red, Orange, Yellow, Green, Aqua, Blue, Purple, Magenta) with independent Hue, Saturation, and Luminance adjustments.
-
-SafeLight's HSL adjustments match this structure exactly and are directly transferred.
-
-### Vignette & Grain
-
-Basic vignette amount and grain amount are transferred. More advanced parameters (feather shape, edge hardness) use SafeLight defaults.
+Only Process 2012 keys are read for the tone sliders: the older Process 2010 Contrast (0–100, default 25) and Shadows (black clipping) mean something different.
 
 ## File Format Details
 
@@ -153,10 +136,6 @@ Check the browser console (`Cmd+Opt+I` on Mac, `Ctrl+Shift+I` on Windows) for a 
 - Check the browser console for parse errors
 - Try opening the file in a text editor to verify format
 
-### Temperature conversion seems wrong
-
-SafeLight uses a different temperature scale than Lightroom. If you imported a preset with Lightroom 7000 K and it looks too cool, manually tweak the temperature slider in SafeLight.
-
 ## Development
 
 ### Build
@@ -184,9 +163,8 @@ src/
 │   ├── lrtemplate-parser.ts # Lua regex extraction
 │   └── parser-types.ts     # Shared interfaces
 ├── mappers/
-│   ├── mapping-table.ts    # 70+ parameter mappings
-│   ├── param-mapper.ts     # Core conversion logic
-│   └── special-cases.ts    # HSL, vignette, grain, etc.
+│   ├── mapping-table.ts    # Scalar slider mappings
+│   └── param-mapper.ts     # Conversion, plus HSL, curves, grading, vignette, grain
 ├── utils/
 │   └── numeric.ts          # Clamp, scale, safe parsing
 └── types.ts                # DevelopParams (mirrors SafeLight)
@@ -197,12 +175,7 @@ src/
 Edit `src/mappers/mapping-table.ts`:
 
 ```typescript
-{
-  lrKeys: ["MyNewLightroomParam"],
-  safelightKey: "myNewSafelightField",
-  transform: (v) => clampToRange(v, -100, 100),
-  comment: "Description of what this does",
-}
+{ lrKeys: ["MyNewLightroomParam"], safelightKey: "myNewSafelightField", transform: within(-100, 100) },
 ```
 
 Then run `npm test` to verify.
@@ -221,6 +194,6 @@ Contributions welcome. If you encounter a Lightroom preset that doesn't import c
 
 ---
 
-**Version**: 1.0.0  
+**Version**: 1.1.0  
 **SafeLight Minimum Version**: 2.1.0  
 **Author**: Anthony

@@ -21,7 +21,7 @@ async function parseXmpPreset(file) {
 		if (doc.documentElement.nodeName === "parsererror" || doc.querySelector("parsererror")) {
 			return null;
 		}
-		const descriptions = elementsByLocalName(doc, "Description");
+		const descriptions = elementsByLocalName(doc, "Description").filter((desc) => desc.parentElement?.localName === "RDF");
 		if (descriptions.length === 0) {
 			return null;
 		}
@@ -33,11 +33,17 @@ async function parseXmpPreset(file) {
 				}
 			}
 			for (const child of Array.from(desc.children)) {
-				if (isCrsQualifiedName(child.nodeName) && child.children.length === 0) {
+				if (!isCrsQualifiedName(child.nodeName)) continue;
+				if (child.children.length === 0) {
 					const text = child.textContent?.trim();
 					if (text) {
 						settings[localPart(child.nodeName)] = parseXmlValue(text);
 					}
+					continue;
+				}
+				const points = readPointSeq(child);
+				if (points) {
+					settings[localPart(child.nodeName)] = points;
 				}
 			}
 		}
@@ -54,10 +60,21 @@ async function parseXmpPreset(file) {
 	}
 }
 function parseXmlValue(str) {
-	if (str === "true") return true;
-	if (str === "false") return false;
+	if (/^true$/i.test(str)) return true;
+	if (/^false$/i.test(str)) return false;
 	const num = asNumber(str);
 	return num !== null ? num : str;
+}
+function readPointSeq(el) {
+	const seq = elementsByLocalName(el, "Seq")[0];
+	if (!seq) return null;
+	const points = [];
+	for (const li of elementsByLocalName(seq, "li")) {
+		const match = li.textContent?.match(/^\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*$/);
+		if (!match) return null;
+		points.push([parseFloat(match[1]), parseFloat(match[2])]);
+	}
+	return points.length > 0 ? points : null;
 }
 function extractPresetName(doc, fileName) {
 	const nameEl = elementsByLocalName(doc, "Name")[0];
@@ -156,317 +173,295 @@ function extractLuaTable(text) {
 
 //#endregion
 //#region src/mappers/mapping-table.ts
-function mapExposure(v) {
-	const n = asNumber(v);
-	if (n === null) return null;
-	return clamp(n * 100, -200, 200);
+function within(min, max) {
+	return (value) => {
+		const n = asNumber(value);
+		return n === null ? null : clamp(n, min, max);
+	};
 }
-function mapNormalized(v) {
-	const n = asNumber(v);
-	if (n === null) return null;
-	return clamp(n, -100, 100);
-}
-function mapNormalizedPercent(v) {
-	const n = asNumber(v);
-	if (n === null) return null;
-	return clamp(n * 100, -100, 100);
-}
-function mapPercent0To100(v) {
-	const n = asNumber(v);
-	if (n === null) return null;
-	return clamp(n, 0, 100);
-}
-function mapTemperature(v) {
-	const n = asNumber(v);
-	if (n === null) return null;
-	const kelvin = clamp(n, 2000, 50000);
-	return clamp((kelvin - 6500) / 65, -100, 100);
+const SLIDER = within(-100, 100);
+const AMOUNT = within(0, 100);
+function kelvin(value) {
+	const n = asNumber(value);
+	return n === null || n < 2000 ? null : Math.min(n, 50000);
 }
 const MAPPING_TABLE = [{
 	lrKeys: ["Exposure2012", "Exposure"],
 	safelightKey: "exposure",
-	transform: mapExposure,
-	comment: "Exposure adjustment"
+	transform: within(-5, 5)
 }, {
-	lrKeys: ["Contrast2012", "Contrast"],
+	lrKeys: ["Contrast2012"],
 	safelightKey: "contrast",
-	transform: mapNormalizedPercent,
-	comment: "Contrast adjustment"
+	transform: SLIDER
 }, {
-	lrKeys: ["Highlights2012", "Highlights"],
+	lrKeys: ["Highlights2012"],
 	safelightKey: "highlights",
-	transform: mapNormalizedPercent,
-	comment: "Highlights adjustment"
+	transform: SLIDER
 }, {
-	lrKeys: ["Shadows2012", "Shadows"],
+	lrKeys: ["Shadows2012"],
 	safelightKey: "shadows",
-	transform: mapNormalizedPercent,
-	comment: "Shadows adjustment"
+	transform: SLIDER
 }, {
-	lrKeys: ["Whites2012", "Whites"],
+	lrKeys: ["Whites2012"],
 	safelightKey: "whites",
-	transform: mapNormalizedPercent,
-	comment: "Whites/Highlights adjustment"
+	transform: SLIDER
 }, {
-	lrKeys: ["Blacks2012", "Blacks"],
+	lrKeys: ["Blacks2012"],
 	safelightKey: "blacks",
-	transform: mapNormalizedPercent,
-	comment: "Blacks/Shadows adjustment"
+	transform: SLIDER
 }, {
 	lrKeys: ["Texture"],
 	safelightKey: "texture",
-	transform: mapNormalizedPercent,
-	comment: "Texture adjustment"
+	transform: SLIDER
 }, {
 	lrKeys: ["Clarity2012", "Clarity"],
 	safelightKey: "clarity",
-	transform: mapNormalizedPercent,
-	comment: "Clarity adjustment"
+	transform: SLIDER
 }, {
 	lrKeys: ["Dehaze"],
 	safelightKey: "dehaze",
-	transform: mapNormalizedPercent,
-	comment: "Dehaze adjustment"
+	transform: SLIDER
 }, {
 	lrKeys: ["Vibrance"],
 	safelightKey: "vibrance",
-	transform: mapNormalized,
-	comment: "Vibrance adjustment"
+	transform: SLIDER
 }, {
 	lrKeys: ["Saturation"],
 	safelightKey: "saturation",
-	transform: mapNormalized,
-	comment: "Saturation adjustment"
+	transform: SLIDER
 }, {
 	lrKeys: ["Temperature"],
 	safelightKey: "temperature",
-	transform: mapTemperature,
-	comment: "Color temperature in Kelvin"
+	transform: kelvin
 }, {
 	lrKeys: ["Tint"],
 	safelightKey: "tint",
-	transform: mapNormalized,
-	comment: "Tint adjustment (magenta/green)"
+	transform: within(-150, 150)
 }, {
-	lrKeys: ["Sharpening"],
+	lrKeys: ["Sharpness"],
 	safelightKey: "sharpening",
-	transform: mapPercent0To100,
-	comment: "Sharpening amount"
+	transform: AMOUNT
 }, {
 	lrKeys: ["SharpenRadius"],
 	safelightKey: "sharpenRadius",
-	transform: (v) => {
-		const n = asNumber(v);
-		if (n === null) return null;
-		return clamp(n, 1, 3);
-	},
-	comment: "Sharpening radius"
+	transform: within(1, 3)
 }, {
 	lrKeys: ["SharpenDetail"],
 	safelightKey: "sharpenDetail",
-	transform: mapPercent0To100,
-	comment: "Sharpening detail/edge detection"
+	transform: AMOUNT
 }, {
-	lrKeys: ["SharpenMasking"],
+	lrKeys: ["SharpenEdgeMasking"],
 	safelightKey: "sharpenMasking",
-	transform: mapPercent0To100,
-	comment: "Sharpening edge masking"
+	transform: AMOUNT
 }, {
 	lrKeys: ["LuminanceSmoothing"],
 	safelightKey: "luminanceNR",
-	transform: mapPercent0To100,
-	comment: "Luminance noise reduction"
+	transform: AMOUNT
 }, {
-	lrKeys: ["LuminanceDetail"],
+	lrKeys: ["LuminanceNoiseReductionDetail"],
 	safelightKey: "luminanceNRDetail",
-	transform: mapPercent0To100,
-	comment: "Luminance NR detail preservation"
+	transform: AMOUNT
 }, {
-	lrKeys: ["LuminanceContrast"],
+	lrKeys: ["LuminanceNoiseReductionContrast"],
 	safelightKey: "luminanceNRContrast",
-	transform: mapPercent0To100,
-	comment: "Luminance NR contrast preservation"
-}, {
-	lrKeys: ["LuminanceNoiseShadows"],
-	safelightKey: "luminanceNRShadows",
-	transform: mapPercent0To100,
-	comment: "Luminance NR shadow weight"
-}, {
-	lrKeys: ["LuminanceNoiseHighlights"],
-	safelightKey: "luminanceNRHighlights",
-	transform: mapPercent0To100,
-	comment: "Luminance NR highlight protection"
+	transform: AMOUNT
 }, {
 	lrKeys: ["ColorNoiseReduction"],
 	safelightKey: "colorNR",
-	transform: mapPercent0To100,
-	comment: "Color (chroma) noise reduction"
+	transform: AMOUNT
 }, {
-	lrKeys: ["ColorNoiseDetail"],
+	lrKeys: ["ColorNoiseReductionDetail"],
 	safelightKey: "colorNRDetail",
-	transform: mapPercent0To100,
-	comment: "Color NR detail preservation"
+	transform: AMOUNT
 }, {
-	lrKeys: ["ColorNoiseSmoothness"],
+	lrKeys: ["ColorNoiseReductionSmoothness"],
 	safelightKey: "colorNRSmoothness",
-	transform: mapPercent0To100,
-	comment: "Color NR smoothness"
+	transform: AMOUNT
 },];
 
 //#endregion
 //#region src/mappers/param-mapper.ts
 async function mapLightroomToDevelopParams(lrPreset) {
 	const params = {};
+	const lr = lrPreset.settings;
 	for (const mapping of MAPPING_TABLE) {
-		const lrKey = mapping.lrKeys.find((k) => (k in lrPreset.settings));
+		const lrKey = mapping.lrKeys.find((k) => (k in lr));
 		if (!lrKey) continue;
-		const lrValue = lrPreset.settings[lrKey];
-		let safelightValue;
-		if (mapping.transform) {
-			safelightValue = mapping.transform(lrValue);
-		} else {
-			safelightValue = null;
-		}
-		if (safelightValue === null) continue;
-		params[mapping.safelightKey] = safelightValue;
+		const value = mapping.transform(lr[lrKey]);
+		if (value !== null) params[mapping.safelightKey] = value;
 	}
-	mapHSLAdjustments(params, lrPreset.settings);
-	mapVignetteParams(params, lrPreset.settings);
-	mapGrainParams(params, lrPreset.settings);
+	if ("WhiteBalance" in lr && lr.WhiteBalance !== "Custom") {
+		delete params.temperature;
+		delete params.tint;
+	}
+	mapHSLAdjustments(params, lr);
+	mapToneCurves(params, lr);
+	mapColorGrading(params, lr);
+	mapVignetteParams(params, lr);
+	mapGrainParams(params, lr);
+	if (lr.ConvertToGrayscale === true) params.saturation = -100;
 	return {
 		name: lrPreset.name,
 		params
 	};
 }
-function mapHSLAdjustments(params, lrSettings) {
-	const hsl = {};
-	const channels = ["Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta"];
-	const channelKeys = ["red", "orange", "yellow", "green", "aqua", "blue", "purple", "magenta"];
-	for (let i = 0; i < channels.length; i++) {
-		const channel = channels[i];
-		const key = channelKeys[i];
-		const hueKey = `HueAdjustment${channel}`;
-		const satKey = `SaturationAdjustment${channel}`;
-		const lumKey = `GrayMixer${channel}`;
-		const hasAny = hueKey in lrSettings || satKey in lrSettings || lumKey in lrSettings;
-		if (!hasAny) continue;
-		if (hueKey in lrSettings) {
-			if (!hsl.hue) hsl.hue = {};
-			const n = parseFloat(String(lrSettings[hueKey]));
-			hsl.hue[key] = isNaN(n) ? 0 : Math.max(-180, Math.min(180, n));
-		}
-		if (satKey in lrSettings) {
-			if (!hsl.saturation) hsl.saturation = {};
-			const n = parseFloat(String(lrSettings[satKey]));
-			hsl.saturation[key] = isNaN(n) ? 0 : Math.max(-100, Math.min(100, n));
-		}
-		if (lumKey in lrSettings) {
-			if (!hsl.luminance) hsl.luminance = {};
-			const n = parseFloat(String(lrSettings[lumKey]));
-			hsl.luminance[key] = isNaN(n) ? 0 : Math.max(-100, Math.min(100, n));
-		}
-	}
-	if (Object.keys(hsl).length > 0) {
-		const defaultHSL = {
-			hue: {
-				red: 0,
-				orange: 0,
-				yellow: 0,
-				green: 0,
-				aqua: 0,
-				blue: 0,
-				purple: 0,
-				magenta: 0
-			},
-			saturation: {
-				red: 0,
-				orange: 0,
-				yellow: 0,
-				green: 0,
-				aqua: 0,
-				blue: 0,
-				purple: 0,
-				magenta: 0
-			},
-			luminance: {
-				red: 0,
-				orange: 0,
-				yellow: 0,
-				green: 0,
-				aqua: 0,
-				blue: 0,
-				purple: 0,
-				magenta: 0
-			}
-		};
-		params.hsl = {
-			hue: {
-				...defaultHSL.hue,
-				...hsl.hue ?? {}
-			},
-			saturation: {
-				...defaultHSL.saturation,
-				...hsl.saturation ?? {}
-			},
-			luminance: {
-				...defaultHSL.luminance,
-				...hsl.luminance ?? {}
-			}
-		};
-	}
+function readNumber(lr, key, min, max) {
+	const n = asNumber(lr[key]);
+	return n === null ? null : clamp(n, min, max);
 }
-function mapVignetteParams(params, lrSettings) {
-	const vignette = {};
-	const amountKey = "VignetteAmount";
-	const midpointKey = "VignetteMidpoint";
-	const roundnessKey = "VignetteRoundness";
-	if (amountKey in lrSettings) {
-		const n = parseFloat(String(lrSettings[amountKey]));
-		vignette.amount = isNaN(n) ? 0 : Math.max(-100, Math.min(100, n));
+const HSL_CHANNELS = [{
+	lr: "Red",
+	key: "red"
+}, {
+	lr: "Orange",
+	key: "orange"
+}, {
+	lr: "Yellow",
+	key: "yellow"
+}, {
+	lr: "Green",
+	key: "green"
+}, {
+	lr: "Aqua",
+	key: "aqua"
+}, {
+	lr: "Blue",
+	key: "blue"
+}, {
+	lr: "Purple",
+	key: "purple"
+}, {
+	lr: "Magenta",
+	key: "magenta"
+},];
+const zeroHSL = () => ({
+	red: 0,
+	orange: 0,
+	yellow: 0,
+	green: 0,
+	aqua: 0,
+	blue: 0,
+	purple: 0,
+	magenta: 0
+});
+function mapHSLAdjustments(params, lr) {
+	const bands = {
+		hue: "HueAdjustment",
+		saturation: "SaturationAdjustment",
+		luminance: "LuminanceAdjustment"
+	};
+	const hsl = {
+		hue: zeroHSL(),
+		saturation: zeroHSL(),
+		luminance: zeroHSL()
+	};
+	let touched = false;
+	for (const [band, prefix] of Object.entries(bands)) {
+		for (const { lr: channel, key } of HSL_CHANNELS) {
+			const n = readNumber(lr, `${prefix}${channel}`, -100, 100);
+			if (n === null) continue;
+			hsl[band][key] = n;
+			touched = true;
+		}
 	}
-	if (midpointKey in lrSettings) {
-		const n = parseFloat(String(lrSettings[midpointKey]));
-		vignette.midpoint = isNaN(n) ? 50 : Math.max(0, Math.min(100, n));
-	}
-	if (roundnessKey in lrSettings) {
-		const n = parseFloat(String(lrSettings[roundnessKey]));
-		vignette.roundness = isNaN(n) ? 0 : Math.max(-100, Math.min(100, n));
-	}
-	if (Object.keys(vignette).length > 0) {
-		params.vignette = {
-			amount: vignette.amount ?? 0,
-			midpoint: vignette.midpoint ?? 50,
-			roundness: vignette.roundness ?? 0,
-			feather: 50,
-			highlights: 0
-		};
-	}
+	if (touched) params.hsl = hsl;
 }
-function mapGrainParams(params, lrSettings) {
-	const grain = {};
-	const amountKey = "GrainAmount";
-	const sizeKey = "GrainSize";
-	const roughnessKey = "GrainFrequency";
-	if (amountKey in lrSettings) {
-		const n = parseFloat(String(lrSettings[amountKey]));
-		grain.amount = isNaN(n) ? 0 : Math.max(0, Math.min(100, n));
+const IDENTITY_CURVE = [{
+	x: 0,
+	y: 0
+}, {
+	x: 1,
+	y: 1
+},];
+function readCurve(lr, key) {
+	const raw = lr[key];
+	if (!Array.isArray(raw)) return null;
+	const points = [];
+	for (const pair of raw) {
+		if (!Array.isArray(pair) || pair.length !== 2) return null;
+		const [x, y] = pair.map(asNumber);
+		if (x === null || y === null) return null;
+		points.push({
+			x: clamp(x / 255, 0, 1),
+			y: clamp(y / 255, 0, 1)
+		});
 	}
-	if (sizeKey in lrSettings) {
-		const n = parseFloat(String(lrSettings[sizeKey]));
-		grain.size = isNaN(n) ? 25 : Math.max(25, Math.min(100, n * 25));
-	}
-	if (roughnessKey in lrSettings) {
-		const n = parseFloat(String(lrSettings[roughnessKey]));
-		grain.roughness = isNaN(n) ? 50 : Math.max(0, Math.min(100, n * 100));
-	}
-	if (Object.keys(grain).length > 0) {
-		params.grain = {
-			amount: grain.amount ?? 0,
-			size: grain.size ?? 25,
-			roughness: grain.roughness ?? 50,
-			color: 0
-		};
-	}
+	return points.length >= 2 ? points : null;
+}
+function mapToneCurves(params, lr) {
+	const curves = {
+		rgb: readCurve(lr, "ToneCurvePV2012"),
+		red: readCurve(lr, "ToneCurvePV2012Red"),
+		green: readCurve(lr, "ToneCurvePV2012Green"),
+		blue: readCurve(lr, "ToneCurvePV2012Blue")
+	};
+	if (!Object.values(curves).some(Boolean)) return;
+	params.toneCurve = {
+		rgb: curves.rgb ?? IDENTITY_CURVE,
+		red: curves.red ?? IDENTITY_CURVE,
+		green: curves.green ?? IDENTITY_CURVE,
+		blue: curves.blue ?? IDENTITY_CURVE
+	};
+}
+function readGradeRange(lr, range, splitToning) {
+	const fallback = (key) => splitToning ? `SplitToning${splitToning}${key}` : null;
+	const pick = (gradeKey, splitKey, min, max) => readNumber(lr, gradeKey, min, max) ?? (splitKey ? readNumber(lr, splitKey, min, max) : null);
+	const hue = pick(`ColorGrade${range}Hue`, fallback("Hue"), 0, 360);
+	const sat = pick(`ColorGrade${range}Sat`, fallback("Saturation"), 0, 100);
+	const luma = readNumber(lr, `ColorGrade${range}Lum`, -100, 100);
+	if (hue === null && sat === null && luma === null) return null;
+	return {
+		hue: hue ?? 0,
+		sat: sat ?? 0,
+		luma: luma ?? 0
+	};
+}
+function mapColorGrading(params, lr) {
+	const shadows = readGradeRange(lr, "Shadow", "Shadow");
+	const midtones = readGradeRange(lr, "Midtone");
+	const highlights = readGradeRange(lr, "Highlight", "Highlight");
+	const global = readGradeRange(lr, "Global");
+	if (!shadows && !midtones && !highlights && !global) return;
+	const neutral = {
+		hue: 0,
+		sat: 0,
+		luma: 0
+	};
+	params.colorGrading = {
+		shadows: shadows ?? neutral,
+		midtones: midtones ?? neutral,
+		highlights: highlights ?? neutral,
+		global: global ?? neutral,
+		shadowRange: 50,
+		highlightRange: 50
+	};
+}
+function mapVignetteParams(params, lr) {
+	const amount = readNumber(lr, "PostCropVignetteAmount", -100, 100);
+	const midpoint = readNumber(lr, "PostCropVignetteMidpoint", 0, 100);
+	const roundness = readNumber(lr, "PostCropVignetteRoundness", -100, 100);
+	const feather = readNumber(lr, "PostCropVignetteFeather", 0, 100);
+	const highlights = readNumber(lr, "PostCropVignetteHighlightContrast", 0, 100);
+	if ([amount, midpoint, roundness, feather, highlights].every((v) => v === null)) return;
+	params.vignette = {
+		amount: amount ?? 0,
+		midpoint: midpoint ?? 50,
+		roundness: roundness ?? 0,
+		feather: feather ?? 50,
+		highlights: highlights ?? 0
+	};
+}
+function mapGrainParams(params, lr) {
+	const amount = readNumber(lr, "GrainAmount", 0, 100);
+	const size = readNumber(lr, "GrainSize", 25, 100);
+	const roughness = readNumber(lr, "GrainFrequency", 0, 100);
+	if (amount === null && size === null && roughness === null) return;
+	params.grain = {
+		amount: amount ?? 0,
+		size: size ?? 25,
+		roughness: roughness ?? 50,
+		color: 0
+	};
 }
 
 //#endregion

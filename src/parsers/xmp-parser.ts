@@ -10,7 +10,12 @@ export async function parseXmpPreset(file: File): Promise<LightroomPreset | null
       return null;
     }
 
-    const descriptions = elementsByLocalName(doc, "Description");
+    // Only the descriptions directly under rdf:RDF hold the preset's settings.
+    // Deeper ones belong to the embedded profile (crs:Look), whose parameters
+    // describe how the profile renders, not what the preset adjusts.
+    const descriptions = elementsByLocalName(doc, "Description").filter(
+      (desc) => desc.parentElement?.localName === "RDF",
+    );
     if (descriptions.length === 0) {
       return null;
     }
@@ -25,13 +30,20 @@ export async function parseXmpPreset(file: File): Promise<LightroomPreset | null
         }
       }
 
-      // Some presets store scalar settings as crs:* child elements instead.
+      // Some presets store scalar settings as crs:* child elements instead, and
+      // tone curves are always child elements holding an rdf:Seq of points.
       for (const child of Array.from(desc.children)) {
-        if (isCrsQualifiedName(child.nodeName) && child.children.length === 0) {
+        if (!isCrsQualifiedName(child.nodeName)) continue;
+        if (child.children.length === 0) {
           const text = child.textContent?.trim();
           if (text) {
             settings[localPart(child.nodeName)] = parseXmlValue(text);
           }
+          continue;
+        }
+        const points = readPointSeq(child);
+        if (points) {
+          settings[localPart(child.nodeName)] = points;
         }
       }
     }
@@ -48,11 +60,26 @@ export async function parseXmpPreset(file: File): Promise<LightroomPreset | null
   }
 }
 
+// Lightroom writes booleans capitalised ("True"/"False").
 function parseXmlValue(str: string): unknown {
-  if (str === "true") return true;
-  if (str === "false") return false;
+  if (/^true$/i.test(str)) return true;
+  if (/^false$/i.test(str)) return false;
   const num = asNumber(str);
   return num !== null ? num : str;
+}
+
+// A curve element: <rdf:Seq><rdf:li>x, y</rdf:li>…</rdf:Seq>, as [x, y] pairs.
+// Null for any other structured element (crs:Name's rdf:Alt, crs:Look, …).
+function readPointSeq(el: Element): [number, number][] | null {
+  const seq = elementsByLocalName(el, "Seq")[0];
+  if (!seq) return null;
+  const points: [number, number][] = [];
+  for (const li of elementsByLocalName(seq, "li")) {
+    const match = li.textContent?.match(/^\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*$/);
+    if (!match) return null;
+    points.push([parseFloat(match[1]), parseFloat(match[2])]);
+  }
+  return points.length > 0 ? points : null;
 }
 
 function extractPresetName(doc: Document, fileName: string): string {

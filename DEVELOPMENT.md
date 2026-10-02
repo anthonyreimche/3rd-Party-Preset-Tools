@@ -104,70 +104,41 @@ const pattern = /(\w+)\s*=\s*(["\']|[\d\-.]|-?true|false)/;
 
 ## Parameter Mapping Reference
 
-### Single-Field Mappings (Straightforward)
+### Scales: values pass through
 
-```
-Exposure2012/Exposure → exposure (×100 scale)
-Contrast2012 → contrast (×100 scale)
-Highlights2012 → highlights (×100 scale)
-... (simple 1:1 conversions with clamp)
-```
+Lightroom writes each slider as it reads in its own UI, and SafeLight's sliders use the same scales. A mapping therefore never rescales; it only clamps to SafeLight's range (see `within()` in `mapping-table.ts`):
 
-### Range-Converting Mappings (Rescale)
-
-**Temperature** is the most complex example:
-
-| LR Range | SL Range | Conversion |
+| Lightroom key | SafeLight field | Range |
 |---|---|---|
-| 2000–50000 K | -100 to +100 | `(kelvin - 6500) / 65` |
-| 5500 K (cool) | -15.4 | |
-| 6500 K (neutral) | 0 | |
-| 7500 K (warm) | 15.4 | |
+| `Exposure2012` (or 2010 `Exposure`) | exposure | −5 to +5 EV |
+| `Contrast2012`, `Highlights2012`, `Shadows2012`, `Whites2012`, `Blacks2012` | contrast … blacks | ±100 |
+| `Texture`, `Clarity2012` (or 2010 `Clarity`), `Dehaze`, `Vibrance`, `Saturation` | texture … saturation | ±100 |
+| `Temperature`, `Tint` | temperature, tint | 2000–50000 K, ±150 |
+| `Sharpness`, `SharpenRadius`, `SharpenDetail`, `SharpenEdgeMasking` | sharpening … sharpenMasking | 0–100 (radius 1–3) |
+| `LuminanceSmoothing`, `LuminanceNoiseReductionDetail`, `LuminanceNoiseReductionContrast` | luminanceNR … | 0–100 |
+| `ColorNoiseReduction`, `ColorNoiseReductionDetail`, `ColorNoiseReductionSmoothness` | colorNR … | 0–100 |
 
-Other examples: Exposure (-5..+5 EV → -200..+200), Saturation (-100..+100 → -100..+100).
+Pitfalls the tests pin:
 
-### Multi-Field Mappings (Special Cases)
+- **Process 2010 tone keys** — `Contrast` (0–100, default 25) and `Shadows` (black clipping) are not the 2012 sliders under an old name, so only the `*2012` keys are read for contrast, highlights, shadows, whites and blacks.
+- **White balance** — `Temperature`/`Tint` are taken only when `WhiteBalance` is absent or `Custom`. As Shot and Auto values are one photo's own white balance (a sidecar carries them). A `Temperature` below 2000 isn't Kelvin and is ignored rather than clamped.
 
-#### HSL Adjustments
+### Structured mappings (`param-mapper.ts`)
 
-Lightroom encodes 8 channels × 3 properties (hue, saturation, luminance).
+- **HSL** — `HueAdjustment*`, `SaturationAdjustment*`, `LuminanceAdjustment*` → `hsl.hue/saturation/luminance`, ±100. `GrayMixer*` is the black-and-white mix, not HSL luminance.
+- **Tone curves** — `ToneCurvePV2012` and its `Red`/`Green`/`Blue` variants. The XMP parser turns each `rdf:Seq` of `"x, y"` points into `[x, y]` pairs on 0–255; the mapper rescales them to 0–1. Missing channels become the identity curve.
+- **Color grading** — shadow and highlight hue/saturation are still written under `SplitToning*` names; `ColorGrade*` wins when both exist. Midtone, global and every luminance come from `ColorGrade*`. Blending/Balance have no counterpart, so the shadow/highlight ranges keep their defaults.
+- **Vignette** — the post-crop vignette (`PostCropVignetteAmount/Midpoint/Roundness/Feather/HighlightContrast`). Plain `Vignette*` keys are lens vignetting correction.
+- **Grain** — `GrainAmount`, `GrainSize` (SafeLight's minimum is 25), `GrainFrequency` → roughness.
+- **Black & white** — `ConvertToGrayscale` → saturation −100 (no B&W mode in SafeLight).
 
-```
-HueAdjustmentRed → hsl.hue.red
-SaturationAdjustmentRed → hsl.saturation.red
-GrayMixerRed → hsl.luminance.red
-... (repeat for Orange, Yellow, Green, Aqua, Blue, Purple, Magenta)
-```
+### Only the preset's own settings
 
-SafeLight has the exact same structure, so the mapping is direct.
-
-#### Vignette
-
-Lightroom has: VignetteAmount, VignetteMidpoint, VignetteRoundness  
-SafeLight has: amount, midpoint, roundness, feather, highlights
-
-Mapping: Transfer available fields, use SafeLight defaults for missing ones.
-
-#### Grain
-
-Lightroom: GrainAmount, GrainSize, GrainFrequency  
-SafeLight: amount, size, roughness, color
-
-Mapping: Transfer available fields; GrainFrequency ≈ roughness.
+A preset embeds its camera profile under `crs:Look`, with its own nested `rdf:Description` (including a tone curve and `ProcessVersion`). The XMP parser reads only the `rdf:Description` elements directly under `rdf:RDF`, so profile internals never become adjustments.
 
 ### Unsupported Parameters
 
-These LR parameters have no SafeLight equivalent:
-
-- **CameraProfile** — No profile system yet (issue #21)
-- **LensProfile** — Lens correction planned but not implemented
-- **AutoLateralCA** — Automatic chromatic aberration correction
-- **ColorGradeGlobalHue** — Partially supported via ColorGrading (skipped for now)
-- **SplitToning*** — No 1:1 mapping to ColorGrading wheels
-- **ProcessVersion** — Lightroom internal
-- **CameraModelRestriction** — Lightroom internal
-
-These are silently skipped with no error. See `getUnsupportedKeys()` in mapping-table.ts.
+Camera profiles, lens profiles and lens vignetting, automatic CA, the B&W mix weights, color grading Blending/Balance, JPEG-relative white balance (`IncrementalTemperature`/`IncrementalTint`), masks, crop and transform. They are silently skipped. Tone curves don't import from `.lrtemplate` yet (they're Lua arrays the regex parser doesn't extract).
 
 ## Adding New Parameter Mappings
 
@@ -179,39 +150,19 @@ Find it in a sample .xmp or .lrtemplate file. For example: `Temperature`, `Clari
 
 Check `src/types.ts` (mirrors `src/catalog/types.ts` from Safelight) for the exact field name and type.
 
-### 3. Define the Transform Function
+### 3. Check the Scales Match
 
-Create a transform that handles value conversion:
-
-```typescript
-// Simple clamp
-function mapNormalized(v: unknown): number | null {
-  const n = asNumber(v);
-  if (n === null) return null;
-  return clamp(n, -100, 100);
-}
-
-// Range conversion
-function mapTemperature(v: unknown): number | null {
-  const n = asNumber(v);
-  if (n === null) return null;
-  const kelvin = clamp(n, 2000, 50000);
-  return clamp((kelvin - 6500) / 65, -100, 100);
-}
-```
+Confirm the Lightroom value and the SafeLight field use the same scale (they almost always do). The transform then only clamps to SafeLight's range with `within(min, max)`.
 
 ### 4. Add to Mapping Table
 
 Edit `src/mappers/mapping-table.ts`:
 
 ```typescript
-{
-  lrKeys: ["MyLRParam", "MyLRParamAlternate"],  // Try these keys in order
-  safelightKey: "myParamField",
-  transform: myTransformFunction,
-  comment: "Describe what this adjustment does",
-}
+{ lrKeys: ["MyLRParam", "MyLRParamAlternate"], safelightKey: "myParamField", transform: within(-100, 100) },
 ```
+
+`lrKeys` are tried in order; the first one present wins.
 
 ### 5. Test
 
@@ -269,25 +220,6 @@ Run fixtures through parser + mapper on each build to catch regressions.
 **Cause**: SafeLight's rendering pipeline differs from Lightroom's. Tone curves, color spaces, defaults are different.
 
 **Fix**: Document as expected behavior in README. Some users may need to tweak imported presets manually.
-
-### Issue: "Temperature conversion seems backwards"
-
-**Cause**: Temperature scale differences.
-- Lightroom: Absolute Kelvin (6500 = neutral)
-- SafeLight: Relative adjustment (-100 to +100)
-
-**Fix**: Double-check the conversion formula. For debug, add console.log in the transform:
-
-```typescript
-function mapTemperature(v: unknown): number | null {
-  const n = asNumber(v);
-  console.log("[LR import] Temperature:", n, "K");
-  const kelvin = clamp(n, 2000, 50000);
-  const relative = clamp((kelvin - 6500) / 65, -100, 100);
-  console.log("[LR import] → Safelight:", relative);
-  return relative;
-}
-```
 
 ### Issue: "Some parameters aren't mapping"
 

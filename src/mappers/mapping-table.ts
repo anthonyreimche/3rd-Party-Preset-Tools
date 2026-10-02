@@ -10,223 +10,69 @@ type NumericDevelopKey = {
 }[keyof DevelopParams];
 
 export interface ParameterMapping {
+  /** Lightroom keys to read, first present wins. */
   lrKeys: string[];
   safelightKey: NumericDevelopKey;
-  transform?: (value: unknown) => number | null;
-  comment?: string;
+  transform: (value: unknown) => number | null;
 }
 
-function mapExposure(v: unknown): number | null {
-  const n = asNumber(v);
-  if (n === null) return null;
-  return clamp(n * 100, -200, 200);
+// Lightroom stores each slider as it reads in its UI (exposure in EV, ±100
+// sliders, Kelvin), and Safelight's sliders share those scales, so values pass
+// through clamped to Safelight's range.
+function within(min: number, max: number): (value: unknown) => number | null {
+  return (value) => {
+    const n = asNumber(value);
+    return n === null ? null : clamp(n, min, max);
+  };
 }
 
-function mapNormalized(v: unknown): number | null {
-  const n = asNumber(v);
-  if (n === null) return null;
-  return clamp(n, -100, 100);
+const SLIDER = within(-100, 100);
+const AMOUNT = within(0, 100);
+
+// Lightroom's Kelvin scale starts at 2000; a lower value isn't a Kelvin
+// temperature, and clamping it would turn the photo deep blue.
+function kelvin(value: unknown): number | null {
+  const n = asNumber(value);
+  return n === null || n < 2000 ? null : Math.min(n, 50000);
 }
 
-function mapNormalizedPercent(v: unknown): number | null {
-  const n = asNumber(v);
-  if (n === null) return null;
-  return clamp(n * 100, -100, 100);
-}
-
-function mapPercent0To100(v: unknown): number | null {
-  const n = asNumber(v);
-  if (n === null) return null;
-  return clamp(n, 0, 100);
-}
-
-function mapTemperature(v: unknown): number | null {
-  const n = asNumber(v);
-  if (n === null) return null;
-  const kelvin = clamp(n, 2000, 50000);
-  return clamp((kelvin - 6500) / 65, -100, 100);
-}
-
+// Process 2012 keys only for the tone sliders: Process 2010's Contrast
+// (0..100, default 25) and Shadows (black clipping) mean something else.
+// Exposure and Clarity kept their scale, so their 2010 keys are read too.
 export const MAPPING_TABLE: ParameterMapping[] = [
+  { lrKeys: ["Exposure2012", "Exposure"], safelightKey: "exposure", transform: within(-5, 5) },
+  { lrKeys: ["Contrast2012"], safelightKey: "contrast", transform: SLIDER },
+  { lrKeys: ["Highlights2012"], safelightKey: "highlights", transform: SLIDER },
+  { lrKeys: ["Shadows2012"], safelightKey: "shadows", transform: SLIDER },
+  { lrKeys: ["Whites2012"], safelightKey: "whites", transform: SLIDER },
+  { lrKeys: ["Blacks2012"], safelightKey: "blacks", transform: SLIDER },
+  { lrKeys: ["Texture"], safelightKey: "texture", transform: SLIDER },
+  { lrKeys: ["Clarity2012", "Clarity"], safelightKey: "clarity", transform: SLIDER },
+  { lrKeys: ["Dehaze"], safelightKey: "dehaze", transform: SLIDER },
+  { lrKeys: ["Vibrance"], safelightKey: "vibrance", transform: SLIDER },
+  { lrKeys: ["Saturation"], safelightKey: "saturation", transform: SLIDER },
+  { lrKeys: ["Temperature"], safelightKey: "temperature", transform: kelvin },
+  { lrKeys: ["Tint"], safelightKey: "tint", transform: within(-150, 150) },
+  { lrKeys: ["Sharpness"], safelightKey: "sharpening", transform: AMOUNT },
+  { lrKeys: ["SharpenRadius"], safelightKey: "sharpenRadius", transform: within(1, 3) },
+  { lrKeys: ["SharpenDetail"], safelightKey: "sharpenDetail", transform: AMOUNT },
+  { lrKeys: ["SharpenEdgeMasking"], safelightKey: "sharpenMasking", transform: AMOUNT },
+  { lrKeys: ["LuminanceSmoothing"], safelightKey: "luminanceNR", transform: AMOUNT },
   {
-    lrKeys: ["Exposure2012", "Exposure"],
-    safelightKey: "exposure",
-    transform: mapExposure,
-    comment: "Exposure adjustment",
-  },
-  {
-    lrKeys: ["Contrast2012", "Contrast"],
-    safelightKey: "contrast",
-    transform: mapNormalizedPercent,
-    comment: "Contrast adjustment",
-  },
-  {
-    lrKeys: ["Highlights2012", "Highlights"],
-    safelightKey: "highlights",
-    transform: mapNormalizedPercent,
-    comment: "Highlights adjustment",
-  },
-  {
-    lrKeys: ["Shadows2012", "Shadows"],
-    safelightKey: "shadows",
-    transform: mapNormalizedPercent,
-    comment: "Shadows adjustment",
-  },
-  {
-    lrKeys: ["Whites2012", "Whites"],
-    safelightKey: "whites",
-    transform: mapNormalizedPercent,
-    comment: "Whites/Highlights adjustment",
-  },
-  {
-    lrKeys: ["Blacks2012", "Blacks"],
-    safelightKey: "blacks",
-    transform: mapNormalizedPercent,
-    comment: "Blacks/Shadows adjustment",
-  },
-  {
-    lrKeys: ["Texture"],
-    safelightKey: "texture",
-    transform: mapNormalizedPercent,
-    comment: "Texture adjustment",
-  },
-  {
-    lrKeys: ["Clarity2012", "Clarity"],
-    safelightKey: "clarity",
-    transform: mapNormalizedPercent,
-    comment: "Clarity adjustment",
-  },
-  {
-    lrKeys: ["Dehaze"],
-    safelightKey: "dehaze",
-    transform: mapNormalizedPercent,
-    comment: "Dehaze adjustment",
-  },
-  {
-    lrKeys: ["Vibrance"],
-    safelightKey: "vibrance",
-    transform: mapNormalized,
-    comment: "Vibrance adjustment",
-  },
-  {
-    lrKeys: ["Saturation"],
-    safelightKey: "saturation",
-    transform: mapNormalized,
-    comment: "Saturation adjustment",
-  },
-  {
-    lrKeys: ["Temperature"],
-    safelightKey: "temperature",
-    transform: mapTemperature,
-    comment: "Color temperature in Kelvin",
-  },
-  {
-    lrKeys: ["Tint"],
-    safelightKey: "tint",
-    transform: mapNormalized,
-    comment: "Tint adjustment (magenta/green)",
-  },
-  {
-    lrKeys: ["Sharpening"],
-    safelightKey: "sharpening",
-    transform: mapPercent0To100,
-    comment: "Sharpening amount",
-  },
-  {
-    lrKeys: ["SharpenRadius"],
-    safelightKey: "sharpenRadius",
-    transform: (v) => {
-      const n = asNumber(v);
-      if (n === null) return null;
-      return clamp(n, 1, 3);
-    },
-    comment: "Sharpening radius",
-  },
-  {
-    lrKeys: ["SharpenDetail"],
-    safelightKey: "sharpenDetail",
-    transform: mapPercent0To100,
-    comment: "Sharpening detail/edge detection",
-  },
-  {
-    lrKeys: ["SharpenMasking"],
-    safelightKey: "sharpenMasking",
-    transform: mapPercent0To100,
-    comment: "Sharpening edge masking",
-  },
-  {
-    lrKeys: ["LuminanceSmoothing"],
-    safelightKey: "luminanceNR",
-    transform: mapPercent0To100,
-    comment: "Luminance noise reduction",
-  },
-  {
-    lrKeys: ["LuminanceDetail"],
+    lrKeys: ["LuminanceNoiseReductionDetail"],
     safelightKey: "luminanceNRDetail",
-    transform: mapPercent0To100,
-    comment: "Luminance NR detail preservation",
+    transform: AMOUNT,
   },
   {
-    lrKeys: ["LuminanceContrast"],
+    lrKeys: ["LuminanceNoiseReductionContrast"],
     safelightKey: "luminanceNRContrast",
-    transform: mapPercent0To100,
-    comment: "Luminance NR contrast preservation",
+    transform: AMOUNT,
   },
+  { lrKeys: ["ColorNoiseReduction"], safelightKey: "colorNR", transform: AMOUNT },
+  { lrKeys: ["ColorNoiseReductionDetail"], safelightKey: "colorNRDetail", transform: AMOUNT },
   {
-    lrKeys: ["LuminanceNoiseShadows"],
-    safelightKey: "luminanceNRShadows",
-    transform: mapPercent0To100,
-    comment: "Luminance NR shadow weight",
-  },
-  {
-    lrKeys: ["LuminanceNoiseHighlights"],
-    safelightKey: "luminanceNRHighlights",
-    transform: mapPercent0To100,
-    comment: "Luminance NR highlight protection",
-  },
-  {
-    lrKeys: ["ColorNoiseReduction"],
-    safelightKey: "colorNR",
-    transform: mapPercent0To100,
-    comment: "Color (chroma) noise reduction",
-  },
-  {
-    lrKeys: ["ColorNoiseDetail"],
-    safelightKey: "colorNRDetail",
-    transform: mapPercent0To100,
-    comment: "Color NR detail preservation",
-  },
-  {
-    lrKeys: ["ColorNoiseSmoothness"],
+    lrKeys: ["ColorNoiseReductionSmoothness"],
     safelightKey: "colorNRSmoothness",
-    transform: mapPercent0To100,
-    comment: "Color NR smoothness",
+    transform: AMOUNT,
   },
-  // Note: VignetteAmount and GrainAmount are object-valued in DevelopParams and
-  // are handled by mapVignetteParams/mapGrainParams in param-mapper.ts.
 ];
-
-export function findMapping(lrKey: string): ParameterMapping | undefined {
-  return MAPPING_TABLE.find((m) => m.lrKeys.includes(lrKey));
-}
-
-export function getUnsupportedKeys(): string[] {
-  return [
-    "CameraProfile",
-    "CameraProfileFileName",
-    "EnableProfileCorrections",
-    "LensProfileEnable",
-    "LensProfileName",
-    "LensProfileFilename",
-    "AutoLateralCA",
-    "ColorGradeGlobalHue",
-    "ColorGradeShadowHue",
-    "ColorGradeHighlightHue",
-    "SplitToningShadowHue",
-    "SplitToningHighlightHue",
-    "SplitToningShadowSaturation",
-    "SplitToningHighlightSaturation",
-    "ProcessVersion",
-    "CameraModelRestriction",
-  ];
-}
