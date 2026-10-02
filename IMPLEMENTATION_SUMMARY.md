@@ -44,10 +44,13 @@ Total: 18 files (12 source + tests, 4 build config, 2 docs)
 
 ### ✅ Parameter Mapping
 - **25 direct mappings**: Exposure, Contrast, Highlights, Shadows, etc.
-- **Special case handling**: 
-  - Temperature (Kelvin → relative adjustment)
-  - HSL adjustments (8 color channels × 3 properties)
-  - Vignette & grain parameters
+- **Same scales as Lightroom**: values pass through (exposure in EV, temperature in Kelvin, ±100 sliders), only clamped
+- **Special case handling** (1.1.0):
+  - HSL adjustments (8 color channels × 3 properties, from `LuminanceAdjustment*`, not the B&W mixer)
+  - Tone curves (`ToneCurvePV2012` + R/G/B, 0–255 → 0–1)
+  - Color grading (`ColorGrade*`, with `SplitToning*` for shadow/highlight hue and saturation)
+  - Post-crop vignette (`PostCropVignette*`) & grain
+  - White balance only when the preset sets a custom one; B&W presets → saturation −100
 - **Range clamping**: All values clamped to SafeLight's valid ranges (-100..100 mostly)
 - **Graceful degradation**: Unmapped Lightroom parameters are silently skipped
 
@@ -74,8 +77,8 @@ These are silently skipped because SafeLight doesn't support them yet:
 
 - Camera Profiles (tracked in SafeLight #21)
 - Lens Profiles & Auto Lateral CA (tracked in SafeLight #21)
-- Split Toning (no 1:1 mapping to ColorGrading wheels)
-- Color Grade with specific hue adjustments (partial support via ColorGrading)
+- Color grading Blending and Balance (no SafeLight counterpart; ranges keep defaults)
+- B&W mix weights (`GrayMixer*`)
 - Process Version & Camera Model Restriction (Lightroom internals)
 
 ### UI Enhancements (Future)
@@ -118,7 +121,7 @@ Runs 20+ tests covering all parsers and mappers.
 ### Mapping Strategy
 - **Declarative mapping table**: All 25+ mappings in one place (MAPPING_TABLE)
 - **Transform functions**: Each mapping specifies how to convert values
-- **Factory functions**: `mapExposure()`, `mapNormalized()`, etc. reduce repetition
+- **Clamp helper**: `within(min, max)` builds each pass-through transform
 
 ### Quality Gates
 - **TypeScript strict mode**: Catches type errors at build time
@@ -138,14 +141,12 @@ Runs 20+ tests covering all parsers and mappers.
 - ✅ Fallback to filename when name field missing
 
 ### Mapper Tests
-- ✅ Basic exposure/contrast mapping
-- ✅ Value clamping to valid ranges
-- ✅ Temperature Kelvin → relative conversion
-- ✅ HSL for all 8 color channels
-- ✅ Vignette amount and midpoint
-- ✅ Grain amount and size
-- ✅ Ignores unmapped parameters
-- ✅ Handles missing transform gracefully
+- ✅ Values pass through on Lightroom's scales, clamped to SafeLight's ranges
+- ✅ Temperature stays in Kelvin; As Shot / Auto white balance is skipped
+- ✅ HSL for all 8 color channels (luminance from the color mixer)
+- ✅ Tone curves, color grading, post-crop vignette, grain
+- ✅ Process 2010 tone keys ignored; B&W presets desaturated
+- ✅ End-to-end import of a Lightroom Classic preset fixture (`src/__fixtures__/warm-matte.xmp`)
 
 ## Performance
 
@@ -197,13 +198,9 @@ The extension uses only browser APIs: File, DOMParser, Regex.
 1. **No support for nested/table structures** in LRTemplate (only simple key=value pairs)
    - Workaround: Presets with complex tables fail gracefully and return null
 
-2. **Temperature conversion assumes 6500 K = neutral**
-   - Note: This is SafeLight's default; Lightroom's may vary by camera
+2. **No tone curves from `.lrtemplate`** (they're Lua arrays the regex parser doesn't extract)
 
-3. **No split-toning mapping** (LR feature with no SL equivalent)
-   - Workaround: Users can manually set color grading in SafeLight
-
-4. **No camera profile support**
+3. **No camera profile support**
    - This is a SafeLight limitation tracked in issue #21
 
 ## Success Criteria Met

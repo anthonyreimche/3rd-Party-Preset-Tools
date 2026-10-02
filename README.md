@@ -44,11 +44,11 @@ The following Lightroom adjustments map to SafeLight parameters:
 | Contrast, Highlights, Shadows, Whites, Blacks | `Contrast2012` … `Blacks2012` | contrast … blacks |
 | Texture, Clarity, Dehaze | `Texture`, `Clarity2012`, `Dehaze` | texture, clarity, dehaze |
 | Vibrance, Saturation | `Vibrance`, `Saturation` | vibrance, saturation |
-| Temperature, Tint | `Temperature`, `Tint` | temperature, tint |
+| Temperature, Tint (custom white balance only) | `Temperature`, `Tint` | temperature, tint |
 | Sharpening (amount, radius, detail, masking) | `Sharpness`, `SharpenRadius`, `SharpenDetail`, `SharpenEdgeMasking` | sharpening … sharpenMasking |
 | Noise Reduction (luminance, detail, contrast; color, detail, smoothness) | `LuminanceSmoothing`, `LuminanceNoiseReduction*`, `ColorNoiseReduction*` | luminanceNR …, colorNR … |
 | HSL / Color mixer (8 channels) | `HueAdjustment*`, `SaturationAdjustment*`, `LuminanceAdjustment*` | hsl |
-| Tone curve (point curve, R, G, B) | `ToneCurvePV2012`, `ToneCurvePV2012Red/Green/Blue` | toneCurve |
+| Tone curve (point curve, R, G, B; `.xmp` only) | `ToneCurvePV2012`, `ToneCurvePV2012Red/Green/Blue` | toneCurve |
 | Color grading (shadows, midtones, highlights, global) | `ColorGrade*`, `SplitToning*` | colorGrading |
 | Post-crop vignette | `PostCropVignette*` | vignette |
 | Grain | `GrainAmount`, `GrainSize`, `GrainFrequency` | grain |
@@ -82,6 +82,8 @@ Lightroom writes each slider as it reads in its own UI, and SafeLight's sliders 
 - **Tone curves** — Lightroom's 0–255 points become SafeLight's 0–1 points.
 
 Only Process 2012 keys are read for the tone sliders: the older Process 2010 Contrast (0–100, default 25) and Shadows (black clipping) mean something different.
+
+White balance transfers only when the preset sets a custom one. As Shot and Auto store one photo's own white balance (an `.xmp` sidecar carries them), so importing a sidecar as a preset leaves each photo's white balance alone.
 
 ## File Format Details
 
