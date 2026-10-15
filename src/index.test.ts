@@ -84,3 +84,30 @@ describe("Lightroom .xmp preset import", () => {
     });
   });
 });
+
+describe("Lightroom .lrtemplate preset import", () => {
+  it("brings the point curve across with the sliders", async () => {
+    const result = await registeredImporter().parse(fixture("medium-contrast.lrtemplate"));
+
+    expect(result).toEqual({
+      name: "Medium Contrast Curve",
+      params: {
+        exposure: 0.25,
+        contrast: 10,
+        toneCurve: {
+          rgb: [
+            { x: 0, y: 0 },
+            { x: 32 / 255, y: 22 / 255 },
+            { x: 64 / 255, y: 56 / 255 },
+            { x: 128 / 255, y: 128 / 255 },
+            { x: 192 / 255, y: 196 / 255 },
+            { x: 1, y: 1 },
+          ],
+          red: IDENTITY,
+          green: IDENTITY,
+          blue: IDENTITY,
+        },
+      },
+    });
+  });
+});

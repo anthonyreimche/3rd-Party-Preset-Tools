@@ -108,4 +108,34 @@ describe("LRTemplate Parser", () => {
     expect(result?.settings.SmallValue).toBe(0.015);
     expect(result?.settings.LargeValue).toBe(1200);
   });
+
+  it("reads point curves as [x, y] pairs", async () => {
+    const content = `s = {
+	title = "Curve",
+	value = {
+		settings = {
+			RetouchInfo = {
+			},
+			ToneCurvePV2012 = {
+				0,
+				0,
+				32,
+				22,
+				255,
+				255,
+			},
+		},
+	},
+}`;
+
+    const file = new File([content], "test.lrtemplate");
+    const result = await parseLrTemplatePreset(file);
+
+    expect(result?.settings.ToneCurvePV2012).toEqual([
+      [0, 0],
+      [32, 22],
+      [255, 255],
+    ]);
+    expect(result?.settings).not.toHaveProperty("RetouchInfo");
+  });
 });

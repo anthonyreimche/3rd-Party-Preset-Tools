@@ -59,5 +59,37 @@ function extractLuaTable(text: string): Record<string, unknown> {
     }
   }
 
+  for (const [key, points] of extractPointLists(text)) {
+    if (!(key in result)) {
+      result[key] = points;
+    }
+  }
+
   return result;
+}
+
+// Lightroom writes each point curve as a flat x, y, x, y, … list of numbers.
+// Pairing them gives curves the same shape the XMP parser does.
+function extractPointLists(text: string): Map<string, [number, number][]> {
+  const lists = new Map<string, [number, number][]>();
+  const listPattern = /(\w+)\s*=\s*\{([^{}]*)\}/g;
+  let match;
+  while ((match = listPattern.exec(text)) !== null) {
+    const numbers = match[2]
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item !== "")
+      .map(Number);
+    if (numbers.length === 0 || numbers.length % 2 !== 0 || !numbers.every(Number.isFinite)) {
+      continue;
+    }
+    const points: [number, number][] = [];
+    for (let i = 0; i < numbers.length; i += 2) {
+      points.push([numbers[i], numbers[i + 1]]);
+    }
+    if (!lists.has(match[1])) {
+      lists.set(match[1], points);
+    }
+  }
+  return lists;
 }

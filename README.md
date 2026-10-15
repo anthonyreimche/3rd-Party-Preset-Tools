@@ -48,7 +48,7 @@ The following Lightroom adjustments map to SafeLight parameters:
 | Sharpening (amount, radius, detail, masking) | `Sharpness`, `SharpenRadius`, `SharpenDetail`, `SharpenEdgeMasking` | sharpening … sharpenMasking |
 | Noise Reduction (luminance, detail, contrast; color, detail, smoothness) | `LuminanceSmoothing`, `LuminanceNoiseReduction*`, `ColorNoiseReduction*` | luminanceNR …, colorNR … |
 | HSL / Color mixer (8 channels) | `HueAdjustment*`, `SaturationAdjustment*`, `LuminanceAdjustment*` | hsl |
-| Tone curve (point curve, R, G, B; `.xmp` only) | `ToneCurvePV2012`, `ToneCurvePV2012Red/Green/Blue` | toneCurve |
+| Tone curve (point curve, R, G, B) | `ToneCurvePV2012`, `ToneCurvePV2012Red/Green/Blue` | toneCurve |
 | Color grading (shadows, midtones, highlights, global) | `ColorGrade*`, `SplitToning*` | colorGrading |
 | Post-crop vignette | `PostCropVignette*` | vignette |
 | Grain | `GrainAmount`, `GrainSize`, `GrainFrequency` | grain |
