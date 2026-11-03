@@ -8,7 +8,7 @@ This extension teaches SafeLight's Presets panel to import Adobe Lightroom prese
 - **Import `.lrtemplate` files** — Legacy Lightroom Classic presets (pre-2018)
 - **Automatic parameter mapping** — 25+ core adjustments automatically converted
 - **Partial presets** — Imported presets behave like SafeLight partial presets (merge over current params, not override)
-- **HSL mixer support** — Color channel adjustments (Hue, Saturation, Luminance) from Lightroom's mixer
+- **HSL mixer support** — Colour channel adjustments (Hue, Saturation, Luminance) from Lightroom's mixer
 - **Vignette & grain** — Post-processing effects converted where possible
 - **Graceful degradation** — Unsupported Lightroom parameters are silently skipped
 
@@ -46,10 +46,10 @@ The following Lightroom adjustments map to SafeLight parameters:
 | Vibrance, Saturation | `Vibrance`, `Saturation` | vibrance, saturation |
 | Temperature, Tint (custom white balance only) | `Temperature`, `Tint` | temperature, tint |
 | Sharpening (amount, radius, detail, masking) | `Sharpness`, `SharpenRadius`, `SharpenDetail`, `SharpenEdgeMasking` | sharpening … sharpenMasking |
-| Noise Reduction (luminance, detail, contrast; color, detail, smoothness) | `LuminanceSmoothing`, `LuminanceNoiseReduction*`, `ColorNoiseReduction*` | luminanceNR …, colorNR … |
-| HSL / Color mixer (8 channels) | `HueAdjustment*`, `SaturationAdjustment*`, `LuminanceAdjustment*` | hsl |
+| Noise Reduction (luminance, detail, contrast; colour, detail, smoothness) | `LuminanceSmoothing`, `LuminanceNoiseReduction*`, `ColorNoiseReduction*` | luminanceNR …, colorNR … |
+| HSL / Colour mixer (8 channels) | `HueAdjustment*`, `SaturationAdjustment*`, `LuminanceAdjustment*` | hsl |
 | Tone curve (point curve, R, G, B) | `ToneCurvePV2012`, `ToneCurvePV2012Red/Green/Blue` | toneCurve |
-| Color grading (shadows, midtones, highlights, global) | `ColorGrade*`, `SplitToning*` | colorGrading |
+| Colour grading (shadows, midtones, highlights, global) | `ColorGrade*`, `SplitToning*` | colorGrading |
 | Post-crop vignette | `PostCropVignette*` | vignette |
 | Grain | `GrainAmount`, `GrainSize`, `GrainFrequency` | grain |
 | Black & White | `ConvertToGrayscale` | saturation −100 |
@@ -62,7 +62,7 @@ The following Lightroom features have no SafeLight equivalent and are **silently
 - **Lens Profiles** and **lens vignetting correction** (`VignetteAmount`)
 - **Automatic Lateral CA** — Automatic chromatic aberration correction
 - **B&W mix** (`GrayMixer*`) — a black-and-white preset imports fully desaturated
-- **Color grading Blending and Balance** — SafeLight's shadow/highlight ranges keep their defaults
+- **Colour grading Blending and Balance** — SafeLight's shadow/highlight ranges keep their defaults
 - **Relative white balance for JPEGs** (`IncrementalTemperature`, `IncrementalTint`)
 - **Masks, crop, and transform**
 - **Process Version** — Lightroom-internal; ignored
@@ -77,7 +77,7 @@ Lightroom writes each slider as it reads in its own UI, and SafeLight's sliders 
 - **Exposure** — EV, −5 to +5.
 - **Temperature** — Kelvin, 2000 to 50000; **Tint** −150 to +150.
 - **Tone, presence, HSL** — −100 to +100.
-- **Sharpening amount** — Lightroom goes to 150, SafeLight to 100; radius is clamped to SafeLight's 1–3.
+- **Sharpening** — amount 0 to 150, as in Lightroom; radius is clamped to SafeLight's 1–3.
 - **Grain size** — SafeLight's smallest grain is 25 (Lightroom's default).
 - **Tone curves** — Lightroom's 0–255 points become SafeLight's 0–1 points.
 
@@ -126,7 +126,7 @@ The importer uses regex-based extraction (no full Lua parser), so it handles the
 
 ### Preset imports but looks different from Lightroom
 
-SafeLight and Lightroom use different rendering pipelines, tone curves, and color spaces. A preset that looks identical in Lightroom may render slightly differently in SafeLight. This is normal and expected.
+SafeLight and Lightroom use different rendering pipelines, tone curves, and colour spaces. A preset that looks identical in Lightroom may render slightly differently in SafeLight. This is normal and expected.
 
 ### Some adjustments are missing from the imported preset
 
@@ -182,7 +182,7 @@ Edit `src/mappers/mapping-table.ts`:
 
 Then run `npm test` to verify.
 
-## License
+## Licence
 
 MIT
 

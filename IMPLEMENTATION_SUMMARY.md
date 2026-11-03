@@ -46,9 +46,9 @@ Total: 18 files (12 source + tests, 4 build config, 2 docs)
 - **25 direct mappings**: Exposure, Contrast, Highlights, Shadows, etc.
 - **Same scales as Lightroom**: values pass through (exposure in EV, temperature in Kelvin, ±100 sliders), only clamped
 - **Special case handling** (1.1.0):
-  - HSL adjustments (8 color channels × 3 properties, from `LuminanceAdjustment*`, not the B&W mixer)
+  - HSL adjustments (8 colour channels × 3 properties, from `LuminanceAdjustment*`, not the B&W mixer)
   - Tone curves (`ToneCurvePV2012` + R/G/B, 0–255 → 0–1)
-  - Color grading (`ColorGrade*`, with `SplitToning*` for shadow/highlight hue and saturation)
+  - Colour grading (`ColorGrade*`, with `SplitToning*` for shadow/highlight hue and saturation)
   - Post-crop vignette (`PostCropVignette*`) & grain
   - White balance only when the preset sets a custom one; B&W presets → saturation −100
 - **Range clamping**: All values clamped to SafeLight's valid ranges (-100..100 mostly)
@@ -77,7 +77,7 @@ These are silently skipped because SafeLight doesn't support them yet:
 
 - Camera Profiles (tracked in SafeLight #21)
 - Lens Profiles & Auto Lateral CA (tracked in SafeLight #21)
-- Color grading Blending and Balance (no SafeLight counterpart; ranges keep defaults)
+- Colour grading Blending and Balance (no SafeLight counterpart; ranges keep defaults)
 - B&W mix weights (`GrayMixer*`)
 - Process Version & Camera Model Restriction (Lightroom internals)
 
@@ -143,8 +143,8 @@ Runs 20+ tests covering all parsers and mappers.
 ### Mapper Tests
 - ✅ Values pass through on Lightroom's scales, clamped to SafeLight's ranges
 - ✅ Temperature stays in Kelvin; As Shot / Auto white balance is skipped
-- ✅ HSL for all 8 color channels (luminance from the color mixer)
-- ✅ Tone curves, color grading, post-crop vignette, grain
+- ✅ HSL for all 8 colour channels (luminance from the colour mixer)
+- ✅ Tone curves, colour grading, post-crop vignette, grain
 - ✅ Process 2010 tone keys ignored; B&W presets desaturated
 - ✅ End-to-end import of a Lightroom Classic preset fixture (`src/__fixtures__/warm-matte.xmp`)
 

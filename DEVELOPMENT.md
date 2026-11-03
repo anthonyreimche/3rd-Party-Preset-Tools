@@ -114,7 +114,7 @@ Lightroom writes each slider as it reads in its own UI, and SafeLight's sliders 
 | `Contrast2012`, `Highlights2012`, `Shadows2012`, `Whites2012`, `Blacks2012` | contrast … blacks | ±100 |
 | `Texture`, `Clarity2012` (or 2010 `Clarity`), `Dehaze`, `Vibrance`, `Saturation` | texture … saturation | ±100 |
 | `Temperature`, `Tint` | temperature, tint | 2000–50000 K, ±150 |
-| `Sharpness`, `SharpenRadius`, `SharpenDetail`, `SharpenEdgeMasking` | sharpening … sharpenMasking | 0–100 (radius 1–3) |
+| `Sharpness`, `SharpenRadius`, `SharpenDetail`, `SharpenEdgeMasking` | sharpening … sharpenMasking | amount 0–150, radius 1–3, detail and masking 0–100 |
 | `LuminanceSmoothing`, `LuminanceNoiseReductionDetail`, `LuminanceNoiseReductionContrast` | luminanceNR … | 0–100 |
 | `ColorNoiseReduction`, `ColorNoiseReductionDetail`, `ColorNoiseReductionSmoothness` | colorNR … | 0–100 |
 
@@ -127,7 +127,7 @@ Pitfalls the tests pin:
 
 - **HSL** — `HueAdjustment*`, `SaturationAdjustment*`, `LuminanceAdjustment*` → `hsl.hue/saturation/luminance`, ±100. `GrayMixer*` is the black-and-white mix, not HSL luminance.
 - **Tone curves** — `ToneCurvePV2012` and its `Red`/`Green`/`Blue` variants. The XMP parser turns each `rdf:Seq` of `"x, y"` points into `[x, y]` pairs on 0–255; the mapper rescales them to 0–1. Missing channels become the identity curve.
-- **Color grading** — shadow and highlight hue/saturation are still written under `SplitToning*` names; `ColorGrade*` wins when both exist. Midtone, global and every luminance come from `ColorGrade*`. Blending/Balance have no counterpart, so the shadow/highlight ranges keep their defaults.
+- **Colour grading** — shadow and highlight hue/saturation are still written under `SplitToning*` names; `ColorGrade*` wins when both exist. Midtone, global and every luminance come from `ColorGrade*`. Blending/Balance have no counterpart, so the shadow/highlight ranges keep their defaults.
 - **Vignette** — the post-crop vignette (`PostCropVignetteAmount/Midpoint/Roundness/Feather/HighlightContrast`). Plain `Vignette*` keys are lens vignetting correction.
 - **Grain** — `GrainAmount`, `GrainSize` (SafeLight's minimum is 25), `GrainFrequency` → roughness.
 - **Black & white** — `ConvertToGrayscale` → saturation −100 (no B&W mode in SafeLight).
@@ -138,7 +138,7 @@ A preset embeds its camera profile under `crs:Look`, with its own nested `rdf:De
 
 ### Unsupported Parameters
 
-Camera profiles, lens profiles and lens vignetting, automatic CA, the B&W mix weights, color grading Blending/Balance, JPEG-relative white balance (`IncrementalTemperature`/`IncrementalTint`), masks, crop and transform. They are silently skipped. Tone curves don't import from `.lrtemplate` yet (they're Lua arrays the regex parser doesn't extract).
+Camera profiles, lens profiles and lens vignetting, automatic CA, the B&W mix weights, colour grading Blending/Balance, JPEG-relative white balance (`IncrementalTemperature`/`IncrementalTint`), masks, crop and transform. They are silently skipped. Tone curves don't import from `.lrtemplate` yet (they're Lua arrays the regex parser doesn't extract).
 
 ## Adding New Parameter Mappings
 
@@ -217,9 +217,9 @@ Run fixtures through parser + mapper on each build to catch regressions.
 
 ### Issue: "Preset imports but adjustments are off"
 
-**Cause**: SafeLight's rendering pipeline differs from Lightroom's. Tone curves, color spaces, defaults are different.
+**Cause**: SafeLight's rendering pipeline differs from Lightroom's. Tone curves, colour spaces, defaults are different.
 
-**Fix**: Document as expected behavior in README. Some users may need to tweak imported presets manually.
+**Fix**: Document as expected behaviour in README. Some users may need to tweak imported presets manually.
 
 ### Issue: "Some parameters aren't mapping"
 
@@ -362,7 +362,7 @@ You can see the exact `params` that were imported.
 
 1. **Add tests** for any new mapper or parser
 2. **Document edge cases** in comments
-3. **Update README** if changing user-visible behavior
+3. **Update README** if changing user-visible behaviour
 4. **Follow TypeScript strict mode** (strict: true in tsconfig)
 5. **Use meaningful names** — `mapExposure` not `m1`
 6. **Comment why, not what** — the code shows what, comments explain why
@@ -370,7 +370,7 @@ You can see the exact `params` that were imported.
 ## Related Issues
 
 - SafeLight #21: Camera profiles & lens correction
-- SafeLight #XX: Color grading wheels UI (would enable better split-toning mapping)
+- SafeLight #XX: Colour grading wheels UI (would enable better split-toning mapping)
 
 ---
 

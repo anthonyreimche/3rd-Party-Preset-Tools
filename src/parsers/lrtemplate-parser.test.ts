@@ -138,4 +138,67 @@ describe("LRTemplate Parser", () => {
     ]);
     expect(result?.settings).not.toHaveProperty("RetouchInfo");
   });
+
+  it("reads the preset's own settings, not those inside a Look's Parameters", async () => {
+    const content = `s = {
+	title = "With Look",
+	value = {
+		settings = {
+			Contrast2012 = 10,
+			Look = {
+				Amount = 1,
+				Name = "Adobe Color",
+				Parameters = {
+					Clarity2012 = 30,
+					ToneCurvePV2012 = {
+						0,
+						0,
+						22,
+						16,
+						255,
+						255,
+					},
+					Vibrance = 40,
+					Version = 0,
+				},
+				SupportsAmount = false,
+			},
+			ToneCurvePV2012 = {
+				0,
+				0,
+				255,
+				255,
+			},
+			Vibrance = 5,
+		},
+		uuid = "0B6B1F0E-3C2A-4E8D-9F1A-7C5D2E4B6A80",
+	},
+	version = 0,
+}`;
+
+    const result = await parseLrTemplatePreset(new File([content], "look.lrtemplate"));
+
+    expect(result?.name).toBe("With Look");
+    expect(result?.settings).toEqual({
+      Contrast2012: 10,
+      ToneCurvePV2012: [
+        [0, 0],
+        [255, 255],
+      ],
+      Vibrance: 5,
+    });
+  });
+
+  it("keeps braces inside a string from ending the table", async () => {
+    const content = `{
+  title = "Braces",
+  ToneCurveName2012 = "Custom {copy}",
+  Exposure = 0.5,
+}`;
+
+    const result = await parseLrTemplatePreset(new File([content], "braces.lrtemplate"));
+
+    expect(result?.settings.ToneCurveName2012).toBe("Custom {copy}");
+    expect(result?.settings.Exposure).toBe(0.5);
+  });
 });

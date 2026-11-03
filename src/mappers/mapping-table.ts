@@ -53,7 +53,7 @@ export const MAPPING_TABLE: ParameterMapping[] = [
   { lrKeys: ["Saturation"], safelightKey: "saturation", transform: SLIDER },
   { lrKeys: ["Temperature"], safelightKey: "temperature", transform: kelvin },
   { lrKeys: ["Tint"], safelightKey: "tint", transform: within(-150, 150) },
-  { lrKeys: ["Sharpness"], safelightKey: "sharpening", transform: AMOUNT },
+  { lrKeys: ["Sharpness"], safelightKey: "sharpening", transform: within(0, 150) },
   { lrKeys: ["SharpenRadius"], safelightKey: "sharpenRadius", transform: within(1, 3) },
   { lrKeys: ["SharpenDetail"], safelightKey: "sharpenDetail", transform: AMOUNT },
   { lrKeys: ["SharpenEdgeMasking"], safelightKey: "sharpenMasking", transform: AMOUNT },

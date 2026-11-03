@@ -112,11 +112,13 @@ describe("Parameter Mapper", () => {
     });
   });
 
-  it("clamps sharpening to Safelight's 0–100 amount and 1–3 radius", async () => {
+  it("clamps sharpening to Safelight's 0–150 amount and 1–3 radius", async () => {
     expect(await map({ Sharpness: 150, SharpenRadius: 0.5 })).toEqual({
-      sharpening: 100,
+      sharpening: 150,
       sharpenRadius: 1,
     });
+    expect(await map({ Sharpness: 120 })).toEqual({ sharpening: 120 });
+    expect(await map({ Sharpness: 400 })).toEqual({ sharpening: 150 });
   });
 
   it("reads HSL luminance from the colour mixer, not the B&W mixer", async () => {
