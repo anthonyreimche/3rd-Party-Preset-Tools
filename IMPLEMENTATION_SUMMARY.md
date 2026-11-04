@@ -82,8 +82,8 @@ These are silently skipped because SafeLight doesn't support them yet:
 - Process Version & Camera Model Restriction (Lightroom internals)
 
 ### UI Enhancements (Future)
-- Import progress dialog (could show "3/10 presets imported")
-- Conflict resolution dialog (preset name collision)
+- Import progress dialogue (could show "3/10 presets imported")
+- Conflict resolution dialogue (preset name collision)
 - Detailed mapping report (which parameters were skipped and why)
 
 These are post-MVP features — the core importer works end-to-end without them.

@@ -1,6 +1,6 @@
 {
   "name": "safelight-lightroom-importer",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Import Lightroom presets (.xmp, .lrtemplate) into SafeLight",
   "author": "Anthony",
   "license": "MIT",
